@@ -1,70 +1,78 @@
-==================================================================
-Human Activity Recognition Using Smartphones Dataset
-Version 1.0
-==================================================================
-Jorge L. Reyes-Ortiz, Davide Anguita, Alessandro Ghio, Luca Oneto.
-Smartlab - Non Linear Complex Systems Laboratory
-DITEN - Università degli Studi di Genova.
-Via Opera Pia 11A, I-16145, Genoa, Italy.
-activityrecognition@smartlab.ws
-www.smartlab.ws
-==================================================================
 
-The experiments have been carried out with a group of 30 volunteers within an age bracket of 19-48 years. Each person performed six activities (WALKING, WALKING_UPSTAIRS, WALKING_DOWNSTAIRS, SITTING, STANDING, LAYING) wearing a smartphone (Samsung Galaxy S II) on the waist. Using its embedded accelerometer and gyroscope, we captured 3-axial linear acceleration and 3-axial angular velocity at a constant rate of 50Hz. The experiments have been video-recorded to label the data manually. The obtained dataset has been randomly partitioned into two sets, where 70% of the volunteers was selected for generating the training data and 30% the test data. 
+# CourseProject-GettingandCleaningData
 
-The sensor signals (accelerometer and gyroscope) were pre-processed by applying noise filters and then sampled in fixed-width sliding windows of 2.56 sec and 50% overlap (128 readings/window). The sensor acceleration signal, which has gravitational and body motion components, was separated using a Butterworth low-pass filter into body acceleration and gravity. The gravitational force is assumed to have only low frequency components, therefore a filter with 0.3 Hz cutoff frequency was used. From each window, a vector of features was obtained by calculating variables from the time and frequency domain. See 'features_info.txt' for more details. 
+#-------------------------------Folder UCI HAR-----------------------------------
+# Reading data
 
-For each record it is provided:
-======================================
+activity_labels <- readLines("./rawData/UCI HAR Dataset/activity_labels.txt")
+features <- readLines("./rawData/UCI HAR Dataset/features.txt")
+subject_test <- read.table("./rawData/UCI HAR Dataset/test/subject_test.txt")
+x_test <- read.table("rawData/UCI HAR Dataset/test/X_test.txt")
+y_test <- read.table("rawData/UCI HAR Dataset/test/y_test.txt")
+x_train <- read.table("./rawData/UCI HAR Dataset/train/X_train.txt")
+y_train <- read.table("./rawData/UCI HAR Dataset/train/y_train.txt")
+subject_train <- read.table("./rawData/UCI HAR Dataset/train/subject_train.txt")
 
-- Triaxial acceleration from the accelerometer (total acceleration) and the estimated body acceleration.
-- Triaxial Angular velocity from the gyroscope. 
-- A 561-feature vector with time and frequency domain variables. 
-- Its activity label. 
-- An identifier of the subject who carried out the experiment.
 
-The dataset includes the following files:
-=========================================
 
-- 'README.txt'
+#---------------- Preparing Data -------------------------------------------------
 
-- 'features_info.txt': Shows information about the variables used on the feature vector.
+# Separating the initial number from each features name
+splitNames <- strsplit(features," ") 
+# Removing the initial number from each feature name
+features <- sapply(splitNames, function(x){x[2]}) 
 
-- 'features.txt': List of all features.
+# Naming each column in x_test according to the labels in features
+names(x_test) <- features 
+names(y_test) <- "ActivityLabels" # Renaming the variable 
+names(subject_test) <- "Subject" 
 
-- 'activity_labels.txt': Links the class labels with their activity name.
+names(x_train) <- features
+names(y_train) <- "ActivityLabels"
+names(subject_train) <- "Subject"
 
-- 'train/X_train.txt': Training set.
+#-----------------------------Merging datasets---------------------------------
 
-- 'train/y_train.txt': Training labels.
+test_tb <- cbind(subject_test, y_test, x_test)
+train_tb <- cbind(subject_train, y_train, x_train)
 
-- 'test/X_test.txt': Test set.
+# using rbind to join test_tb and train_tb
+har_tb <- rbind(test_tb, train_tb)
+har_tb <- har_tb[order(har_tb$Subject, har_tb$ActivityLabels),]
+backup <- har_tb
 
-- 'test/y_test.txt': Test labels.
+col2 <- gsub("1","WALKING", har_tb$ActivityLabels)
+col2 <- gsub("2","WALKING_UPSTAIRS", col2)
+col2 <- gsub("3","WALKING_DOWNSTAIRS", col2)
+col2 <- gsub("4","SITTING", col2)
+col2 <- gsub("5","STANDING", col2)
+col2 <- gsub("6","LAYING", col2)
+har_tb$ActivityLabels <- col2
 
-The following files are available for the train and test data. Their descriptions are equivalent. 
+#---------Extracts only the measurements on the mean and standard deviation for each measurement-----
 
-- 'train/subject_train.txt': Each row identifies the subject who performed the activity for each window sample. Its range is from 1 to 30. 
+#Extracting all names from har_tb
+my_var <- names(har_tb) 
+#Subsetting only names with "mean", and "std"
+pos_a <- grep("mean",my_var);pos_b <- grep("std",my_var) 
+#adding columns 1 e 2, subject and Activity_labels
+pos_c <- c(1,2) 
+#combining all variables 
+pos_var <- c(pos_a,pos_b,pos_c) 
+#81 variables that will be subsetted from hr_tb
+length(unique(pos_var)) 
+#sorting pos_var
+pos_var <- sort(pos_var) 
+#Subsetting hr_tb
+har_tb_sub <- har_tb[,pos_var] 
 
-- 'train/Inertial Signals/total_acc_x_train.txt': The acceleration signal from the smartphone accelerometer X axis in standard gravity units 'g'. Every row shows a 128 element vector. The same description applies for the 'total_acc_x_train.txt' and 'total_acc_z_train.txt' files for the Y and Z axis. 
 
-- 'train/Inertial Signals/body_acc_x_train.txt': The body acceleration signal obtained by subtracting the gravity from the total acceleration. 
+#--------------- Taking the mean of all duplicated Subject and ActivityLabels----------------------
 
-- 'train/Inertial Signals/body_gyro_x_train.txt': The angular velocity vector measured by the gyroscope for each window sample. The units are radians/second. 
+library(dplyr)
+har <- har_tb_sub %>%
+group_by(Subject, ActivityLabels) %>%
+summarise_all(funs(mean))
 
-Notes: 
-======
-- Features are normalized and bounded within [-1,1].
-- Each feature vector is a row on the text file.
-
-For more information about this dataset contact: activityrecognition@smartlab.ws
-
-License:
-========
-Use of this dataset in publications must be acknowledged by referencing the following publication [1] 
-
-[1] Davide Anguita, Alessandro Ghio, Luca Oneto, Xavier Parra and Jorge L. Reyes-Ortiz. Human Activity Recognition on Smartphones using a Multiclass Hardware-Friendly Support Vector Machine. International Workshop of Ambient Assisted Living (IWAAL 2012). Vitoria-Gasteiz, Spain. Dec 2012
-
-This dataset is distributed AS-IS and no responsibility implied or explicit can be addressed to the authors or their institutions for its use or misuse. Any commercial use is prohibited.
-
-Jorge L. Reyes-Ortiz, Alessandro Ghio, Luca Oneto, Davide Anguita. November 2012.
+#Finishing activity by creating a tidy dataset
+write.table(har, file = "./tidyData.txt", row.names = FALSE)
